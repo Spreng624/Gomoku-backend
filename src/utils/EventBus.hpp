@@ -41,7 +41,8 @@ enum class Event
     RoomStatusChanged, // 房间状态变化
     DrawRequested,     // 平局请求
     DrawAccepted,      // 平局接受
-    GiveUpRequested    // 认输
+    GiveUpRequested,   // 认输
+    RoomCreated        // 房间创建完成
 };
 
 template <typename T>

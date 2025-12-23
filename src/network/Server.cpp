@@ -164,13 +164,13 @@ int Server::HandleClient(SOCKET_TYPE sock)
         return 0;
     }
 
-    LOG_DEBUG("Received " + std::to_string(n) + " bytes from client (Sock: " + std::to_string(sock) + "): ");
+    LOG_TRACE("Received " + std::to_string(n) + " bytes from client (Sock: " + std::to_string(sock) + "): ");
     buffer.insert(buffer.end(), temp_buf, temp_buf + n);
 
     Frame frame;
     while (frame.ReadStream(buffer))
     {
-        LOG_DEBUG("Received frame from client (Sock: " + std::to_string(sock) + "): ");
+        LOG_TRACE("Received frame from client (Sock: " + std::to_string(sock) + "): ");
         this->OnFrame((int)sock, frame);
     }
 
@@ -363,14 +363,14 @@ int Server::OnFrame(int sock, Frame frame)
     switch (frame.head.status)
     {
     case Frame::Status::Hello:
-        LOG_DEBUG("Received Hello from client (Sock: " + std::to_string(sock) + ")");
+        LOG_TRACE("Received Hello from client (Sock: " + std::to_string(sock) + ")");
         if (it == sockToId.end())
             SendStatus(sock, sessionId, Frame::Status::NewSession, p->Get_Pk_Sig());
         else
             SendStatus(sock, sessionId, Frame::Status::NewSession, p->Get_Pk_Sig());
         break;
     case Frame::Status::Pending:
-        LOG_DEBUG("Received Pending from client (Sock: " + std::to_string(sock) + ")");
+        LOG_TRACE("Received Pending from client (Sock: " + std::to_string(sock) + ")");
         if (p->isActive)
         {
             SendStatus(sock, sessionId, Frame::Status::Activated);
@@ -383,7 +383,7 @@ int Server::OnFrame(int sock, Frame frame)
             SendStatus(sock, sessionId, Frame::Status::Activated);
         break;
     case Frame::Status::Active:
-        LOG_DEBUG("Received Active from client (Sock: " + std::to_string(sock) + ")");
+        LOG_TRACE("Received Active from client (Sock: " + std::to_string(sock) + ")");
         if (!p->isActive)
             SendStatus(sock, sessionId, Frame::Status::Inactive);
         else if (!p->Decrypt(frame.data))
@@ -393,14 +393,13 @@ int Server::OnFrame(int sock, Frame frame)
         else
         {
             HeartBeat(sessionId);
-
             // 通过回调通知上层
             if (onPacketCb)
                 onPacketCb(packet);
         }
         break;
     default:
-        LOG_DEBUG("Received Unknown frame from client (Sock: " + std::to_string(sock) + ")");
+        LOG_WARN("Received Unknown frame from client (Sock: " + std::to_string(sock) + ")");
         SendStatus(sock, sessionId, Frame::Status::InvalidRequest);
         break;
     }

@@ -12,8 +12,13 @@ Handler::~Handler() {}
 
 void Handler::HandlePacket(const Packet &packet)
 {
-    LOG_DEBUG("Handling packet with MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
+    if (packet.msgType == MsgType::None)
+    {
+        LOG_TRACE("HeartBeat");
+        return;
+    }
 
+    LOG_DEBUG("Handling packet with MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
     switch (packet.msgType)
     {
     case MsgType::None:

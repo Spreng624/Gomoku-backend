@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_testing()
 
 # 使用本地googletest
-set(GTEST_ROOT "${CMAKE_SOURCE_DIR}/googletest-1.14.0/googletest-1.14.0/googletest")
-include_directories(${GTEST_ROOT}/include)
+set(GTEST_ROOT "${CMAKE_SOURCE_DIR}/googletest-1.14.0/googletest")
+include_directories(${GTEST_ROOT}/include ${GTEST_ROOT})
 
 # 编译gtest库
 add_library(gtest STATIC ${GTEST_ROOT}/src/gtest-all.cc)

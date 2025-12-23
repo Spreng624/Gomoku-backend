@@ -63,6 +63,10 @@ enum MsgType : uint32_t
     DrawRequested = 0x1005,     // 请求平局推送
     DrawAccepted = 0x1006,      // 平局被接受推送
     GiveUpRequested = 0x1007,   // 认输推送
+    RoomCreated = 0x1008,       // 房间创建推送
+    BoardState = 0x1009,        // 棋盘状态推送
+    PlayerList = 0x100A,        // 玩家列表推送
+    ColorAssignment = 0x100B,   // 黑白棋手分配推送
 
     // 0xFF00-0xFFFF 错误消息
     Success = 0xFF00,

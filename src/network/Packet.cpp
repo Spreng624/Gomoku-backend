@@ -1,4 +1,5 @@
 #include "Packet.h"
+#include "Logger.h"
 
 #include <memory>
 
@@ -74,7 +75,9 @@ std::vector<uint8_t> Packet::Serialize() const
 
         std::visit([this, &buffer, index](const auto &value)
                    {
-            if constexpr (std::is_same_v<std::decay_t<decltype(value)>, uint8_t>) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(value)>, int>) {
+                WriteBytes<uint32_t>(buffer, value);
+            } else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, uint8_t>) {
                 buffer.push_back(value);
             } else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, uint32_t>) {
                 WriteBytes<uint32_t>(buffer, value);
@@ -114,6 +117,7 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
 
         if (offset + key_len > buffer.size())
         {
+            LOG_WARN("Deserialize failed");
             return false;
         }
         std::string key(reinterpret_cast<const char *>(buffer.data() + offset), key_len);
@@ -121,6 +125,7 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
 
         if (offset + 1 > buffer.size())
         {
+            LOG_WARN("Deserialize failed");
             return false;
         }
         uint8_t index = buffer[offset++];
@@ -130,22 +135,34 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
         {
         case 0: // int
             if (offset + 4 > buffer.size())
+            {
+                LOG_WARN("Deserialize failed");
                 return false;
+            }
             value = ReadBytes<uint32_t>(buffer, offset);
             break;
         case 1: // uint8_t
             if (offset + 1 > buffer.size())
+            {
+                LOG_WARN("Deserialize failed");
                 return false;
+            }
             value = buffer[offset++];
             break;
         case 2: // uint32_t
             if (offset + 4 > buffer.size())
+            {
+                LOG_WARN("Deserialize failed");
                 return false;
+            }
             value = ReadBytes<uint32_t>(buffer, offset);
             break;
         case 3: // uint64_t
             if (offset + 8 > buffer.size())
+            {
+                LOG_WARN("Deserialize failed");
                 return false;
+            }
             value = ReadBytes<uint64_t>(buffer, offset);
             break;
         case 4: // std::string
@@ -153,6 +170,7 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
             uint32_t str_len = ReadBytes<uint32_t>(buffer, offset);
             if (offset + str_len > buffer.size())
             {
+                LOG_WARN("Deserialize failed");
                 return false;
             }
             value = std::string(reinterpret_cast<const char *>(buffer.data() + offset), str_len);
@@ -162,6 +180,7 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
         case 5: // bool
             if (offset + 1 > buffer.size())
             {
+                LOG_WARN("Deserialize failed");
                 return false;
             }
             value = (buffer[offset++] != 0);
@@ -171,6 +190,7 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
             uint32_t vec_len = ReadBytes<uint32_t>(buffer, offset);
             if (offset + vec_len > buffer.size())
             {
+                LOG_WARN("Deserialize failed");
                 return false;
             }
             std::vector<uint8_t> vec(buffer.data() + offset, buffer.data() + offset + vec_len);
