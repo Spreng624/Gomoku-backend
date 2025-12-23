@@ -110,6 +110,7 @@ void Handler::OnLogin(const Packet &packet)
     if (!user || user->GetPassword() != password)
     {
         LOG_WARN("Login failed for user: " + username + " - Invalid username or password");
+        LOG_DEBUG("Provided password: " + password + ", Expected password: " + (user ? user->GetPassword() : "N/A"));
         SendError(packet, "Invalid username or password");
         return;
     }
@@ -120,8 +121,9 @@ void Handler::OnLogin(const Packet &packet)
     LOG_INFO("Login successful for user: " + username + " (ID: " + std::to_string(user->GetID()) + ")");
 
     MapType response;
-    response["userId"] = uint64_t(user->GetID());
+    response["success"] = true;
     response["username"] = username;
+    response["rating"] = user->GetRanking();
     SendResponse(packet, MsgType::Login, response);
 }
 
@@ -391,14 +393,14 @@ void Handler::SendResponse(const Packet &request, MsgType responseType, const Ma
     // 创建响应包（事件驱动架构，不需要requestId）
     Packet response(request.sessionId, responseType);
     response.params = params;
-    LOG_DEBUG("[Handler] Sending response: msgType=" + std::to_string((int)responseType));
+    LOG_DEBUG("Sending response: msgType=" + std::to_string((int)responseType));
     if (sendCallback)
     {
         sendCallback(response);
     }
     else
     {
-        LOG_ERROR("[Handler] sendCallback is null, cannot send response");
+        LOG_ERROR("sendCallback is null, cannot send response");
     }
 }
 
