@@ -184,7 +184,6 @@ bool Packet::Deserialize(const std::vector<uint8_t> &buffer)
 
         params[key] = value;
     }
-    msgType = static_cast<MsgType>(GetParam<uint32_t>("msgType", MsgType::None));
 
     return true;
 }

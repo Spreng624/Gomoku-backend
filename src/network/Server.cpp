@@ -164,7 +164,7 @@ int Server::HandleClient(SOCKET_TYPE sock)
         return 0;
     }
 
-    LOG_DEBUG("Received " + std::to_string(n) + " bytes from client (Sock: " + std::to_string(sock) + "): " + std::string(temp_buf, n));
+    LOG_DEBUG("Received " + std::to_string(n) + " bytes from client (Sock: " + std::to_string(sock) + "): ");
     buffer.insert(buffer.end(), temp_buf, temp_buf + n);
 
     Frame frame;

@@ -1,3 +1,0 @@
-D:\Env\CMake\bin\cmake.exe -E rm -f CMakeFiles\GomokuBackend.dir/objects.a
-D:\Env\mingw64\bin\ar.exe qc CMakeFiles\GomokuBackend.dir/objects.a @CMakeFiles\GomokuBackend.dir\objects1.rsp
-D:\Env\mingw64\bin\g++.exe -g -Wl,--whole-archive CMakeFiles\GomokuBackend.dir/objects.a -Wl,--no-whole-archive -o GomokuBackend.exe -Wl,--out-implib,libGomokuBackend.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\GomokuBackend.dir\linkLibs.rsp

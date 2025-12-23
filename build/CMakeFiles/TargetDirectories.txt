@@ -1,3 +1,0 @@
-E:/Dev/Gomoku-backend/build/CMakeFiles/GomokuBackend.dir
-E:/Dev/Gomoku-backend/build/CMakeFiles/edit_cache.dir
-E:/Dev/Gomoku-backend/build/CMakeFiles/rebuild_cache.dir
