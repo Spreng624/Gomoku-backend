@@ -1,0 +1,110 @@
+[
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\core\\Handler.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\core\\Handler.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/core/Handler.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/core/Handler.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\core\\Notifier.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\core\\Notifier.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/core/Notifier.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/core/Notifier.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\core\\ObjectManager.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\core\\ObjectManager.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/core/ObjectManager.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/core/ObjectManager.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\data\\Database.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\data\\Database.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/data/Database.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/data/Database.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\gcc.exe  @CMakeFiles/GomokuBackend.dir/includes_C.rsp -g -o CMakeFiles\\GomokuBackend.dir\\src\\data\\sqlite3.c.obj -c E:\\Dev\\Gomoku-backend\\src\\data\\sqlite3.c",
+  "file": "E:/Dev/Gomoku-backend/src/data/sqlite3.c",
+  "output": "CMakeFiles/GomokuBackend.dir/src/data/sqlite3.c.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\game\\AiPlayer.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\game\\AiPlayer.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/game/AiPlayer.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/game/AiPlayer.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\game\\AiPlayer_improved.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\game\\AiPlayer_improved.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/game/AiPlayer_improved.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/game/AiPlayer_improved.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\game\\Game.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\game\\Game.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/game/Game.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/game/Game.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\game\\Player.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\game\\Player.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/game/Player.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/game/Player.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\game\\Room.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\game\\Room.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/game/Room.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/game/Room.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\game\\User.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\game\\User.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/game/User.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/game/User.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\main.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\main.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/main.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/main.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\network\\Frame.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\network\\Frame.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/network/Frame.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/network/Frame.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\network\\Packet.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\network\\Packet.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/network/Packet.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/network/Packet.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\network\\Server.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\network\\Server.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/network/Server.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/network/Server.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\utils\\Crypto.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\utils\\Crypto.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/utils/Crypto.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/utils/Crypto.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\utils\\Logger.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\utils\\Logger.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/utils/Logger.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/utils/Logger.cpp.obj"
+},
+{
+  "directory": "E:/Dev/Gomoku-backend/build",
+  "command": "D:\\Env\\mingw64\\bin\\g++.exe  @CMakeFiles/GomokuBackend.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\GomokuBackend.dir\\src\\utils\\Metrics.cpp.obj -c E:\\Dev\\Gomoku-backend\\src\\utils\\Metrics.cpp",
+  "file": "E:/Dev/Gomoku-backend/src/utils/Metrics.cpp",
+  "output": "CMakeFiles/GomokuBackend.dir/src/utils/Metrics.cpp.obj"
+}
+]
