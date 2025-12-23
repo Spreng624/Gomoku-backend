@@ -5,17 +5,20 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 启用测试
-# enable_testing()
+enable_testing()
 
-# # 使用 FetchContent 下载 GoogleTest
-# include(FetchContent)
-# FetchContent_Declare(
-#   googletest
-#   URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-# )
-# # 对于 Windows，防止覆盖 Windows 宏
-# set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-# FetchContent_MakeAvailable(googletest)
+# 使用本地googletest
+set(GTEST_ROOT "${CMAKE_SOURCE_DIR}/googletest-1.14.0/googletest-1.14.0/googletest")
+include_directories(${GTEST_ROOT}/include)
+
+# 编译gtest库
+add_library(gtest STATIC ${GTEST_ROOT}/src/gtest-all.cc)
+set_target_properties(gtest PROPERTIES
+    COMPILE_FLAGS "-DGTEST_HAS_PTHREAD=0"
+)
+
+add_library(gtest_main STATIC ${GTEST_ROOT}/src/gtest_main.cc)
+target_link_libraries(gtest_main gtest)
 
 include_directories(
     src
@@ -27,50 +30,55 @@ include_directories(
 )
 
 file(GLOB_RECURSE SOURCES "src/*.c" "src/*.cpp" "src/*.hpp")
+list(FILTER SOURCES EXCLUDE REGEX "src/main.cpp")
 message(STATUS "Sources: ${SOURCES}")
-add_executable(${PROJECT_NAME} ${SOURCES} )
+add_library(${PROJECT_NAME}_lib ${SOURCES})
+
+add_executable(${PROJECT_NAME} src/main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
+
+target_include_directories(${PROJECT_NAME}_lib PRIVATE src)
+
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME}_lib PRIVATE bcrypt)
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME}_lib PRIVATE Threads::Threads ws2_32 bcrypt)
+else()
+    target_link_libraries(${PROJECT_NAME}_lib PRIVATE Threads::Threads)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
-find_package(Threads REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)
+# --- 测试目标 ---
+# 收集测试源文件
+file(GLOB_RECURSE TEST_SOURCES "test/*.cpp")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "test_client.cpp")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "test_packet.cpp")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "test_logger.cpp")
+message(STATUS "Test sources: ${TEST_SOURCES}")
+
+# 创建测试可执行文件
+add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
+
+# 链接测试目标
+target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+    ${PROJECT_NAME}_lib
+    gtest_main
+    Threads::Threads
+)
+
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads ws2_32 bcrypt ${SQLite3_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME}_tests PRIVATE ws2_32 bcrypt)
 else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads ${SQLite3_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME}_tests PRIVATE)
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${SQLite3_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME}_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
 
-# # --- 测试目标 ---
-# # 收集测试源文件
-# file(GLOB_RECURSE TEST_SOURCES "test/*.cpp")
-# message(STATUS "Test sources: ${TEST_SOURCES}")
-
-# # 创建测试可执行文件
-# add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
-
-# # 链接测试目标
-# target_link_libraries(${PROJECT_NAME}_tests PRIVATE
-#     ${PROJECT_NAME}
-#     gtest
-#     gtest_main
-#     Threads::Threads
-# )
-
-# if(WIN32)
-#     target_link_libraries(${PROJECT_NAME}_tests PRIVATE ws2_32 bcrypt ${SQLite3_LIBRARIES})
-# else()
-#     target_link_libraries(${PROJECT_NAME}_tests PRIVATE ${SQLite3_LIBRARIES})
-# endif()
-
-# target_include_directories(${PROJECT_NAME}_tests PRIVATE
-#     src
-#     ${SQLite3_INCLUDE_DIRS}
-# )
-
-# # 添加测试
-# add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)
+# 添加测试
+add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)
 
 # # --- 客户端测试 ---
 # add_executable(test_client test_client.cpp)

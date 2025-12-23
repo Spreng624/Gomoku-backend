@@ -225,12 +225,3 @@ TEST_F(ImprovedAiPlayerTest, Performance)
         EXPECT_EQ(board[move.first][move.second], Piece::EMPTY);
     }
 }
-
-// 辅助函数实现
-void ImprovedAiPlayerTest::placePieces(const std::vector<std::pair<int, int>> &positions, Piece color)
-{
-    for (const auto &pos : positions)
-    {
-        EXPECT_TRUE(game.makeMove(pos.first, pos.second, color));
-    }
-}
