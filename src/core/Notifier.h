@@ -35,6 +35,7 @@ private:
     void OnChatMessageRecv(uint64_t roomId, uint64_t userId, const std::string &message);
     void OnRoomSync(uint64_t roomId);
     void OnGameSync(uint64_t roomId);
+    void OnSyncSeat(uint64_t roomId, uint64_t blackPlayerId, uint64_t whitePlayerId);
 
     // 辅助函数：通过 sessionId 发送推送消息
     void BroadcastToRoom(uint64_t roomId, const Packet &packet);

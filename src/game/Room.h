@@ -10,9 +10,9 @@
 
 enum class RoomStatus
 {
-    Free = 0,
-    Playing = 1,
-    End = 2
+    Free,
+    Playing,
+    End
 };
 
 class Room
@@ -29,6 +29,9 @@ private:
 
     std::string error;
 
+    // 辅助函数
+    bool isInRoom(uint64_t userId) const;
+
 public:
     // 基础信息
     uint64_t roomId;
@@ -41,6 +44,7 @@ public:
     Room(uint64_t roomId);
     ~Room();
 
+    bool SyncSeat(uint64_t userId, uint64_t blackUserId, uint64_t whiteUserId);
     uint64_t GetRoomId() const;
     bool AddPlayer(uint64_t userId);
     int RemovePlayer(uint64_t userId);
@@ -51,7 +55,7 @@ public:
     bool TakeWhite(uint64_t userId);
     bool CancelTake(uint64_t userId);
 
-    bool TakeMove(uint64_t userId, uint32_t x, uint32_t y);
+    bool MakeMove(uint64_t userId, uint32_t x, uint32_t y);
     bool BackMove(uint64_t userId, uint32_t x, uint32_t y);
     bool Draw(uint64_t userId);
     bool GiveUp(uint64_t userId);

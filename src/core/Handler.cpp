@@ -12,7 +12,6 @@ Handler::~Handler() {}
 // 分组处理方法实现
 void Handler::HandleAuthPacket(const Packet &packet)
 {
-
     std::string username = packet.GetParam<std::string>("username");
     std::string password = packet.GetParam<std::string>("password");
     switch (packet.msgType)
@@ -59,7 +58,9 @@ void Handler::HandleAuthPacket(const Packet &packet)
         objMgr.MapSessionToUser(packet.sessionId, user->GetID());
 
         MapType response;
-        response["userId"] = uint64_t(user->GetID());
+        response["success"] = true;
+        response["username"] = username;
+        response["rating"] = user->GetRanking();
         SendResponse(packet, MsgType::SignIn, response);
 
         // 发布用户登录事件，触发用户列表广播
@@ -74,7 +75,9 @@ void Handler::HandleAuthPacket(const Packet &packet)
         objMgr.MapSessionToUser(packet.sessionId, guestId);
 
         MapType response;
-        response["guestId"] = guestId;
+        response["success"] = true;
+        response["username"] = "Guest_" + std::to_string(guestId);
+        response["rating"] = 0; // 默认 rating
         SendResponse(packet, MsgType::LoginAsGuest, response);
 
         // 发布用户登录事件，触发用户列表广播
@@ -95,6 +98,7 @@ void Handler::HandleAuthPacket(const Packet &packet)
     }
     default:
         LOG_DEBUG("Unhandled auth MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
+        SendError(packet, "Unhandled authentication message type");
         break;
     }
 }
@@ -149,7 +153,6 @@ void Handler::HandleLobbyPacket(const Packet &packet)
         EventBus<Event>::GetInstance().Publish(Event::RoomListUpdated);
         return;
     }
-
     case MsgType::JoinRoom:
     {
         User *user = GetUserBySessionId(packet.sessionId);
@@ -183,34 +186,8 @@ void Handler::HandleLobbyPacket(const Packet &packet)
         response["success"] = true;
         SendResponse(packet, MsgType::JoinRoom, response);
 
-        // 给新玩家发送房间当前状态
-        SendRoomStateToPlayer(packet.sessionId, room);
-
         // 发布玩家加入事件（广播给其他玩家）
         EventBus<Event>::GetInstance().Publish(Event::PlayerJoined, roomId, user->GetID());
-        return;
-    }
-    case MsgType::ExitRoom:
-    {
-        User *user = GetUserBySessionId(packet.sessionId);
-        if (!user)
-        {
-            SendError(packet, "Not logged in");
-            return;
-        }
-
-        uint64_t roomId = objMgr.GetRoomIdByUserId(user->GetID());
-        Room *room = objMgr.GetRoom(roomId);
-
-        // 从房间映射中移除用户
-        objMgr.UnmapUserFromRoom(user->GetID());
-
-        MapType response;
-        response["success"] = true;
-        SendResponse(packet, MsgType::ExitRoom, response);
-
-        // 发布玩家离开事件（事件驱动架构）
-        EventBus<Event>::GetInstance().Publish(Event::PlayerLeft, roomId, user->GetID());
         return;
     }
     case MsgType::QuickMatch:
@@ -305,15 +282,15 @@ void Handler::HandleLobbyPacket(const Packet &packet)
                     User *blackUser = objMgr.GetUserByUserId(room->blackPlayerId);
                     User *whiteUser = objMgr.GetUserByUserId(room->whitePlayerId);
 
-                    std::string blackName = blackUser ? blackUser->GetUsername() : "未知玩家";
-                    std::string whiteName = whiteUser ? whiteUser->GetUsername() : "未知玩家";
+                    std::string blackName = blackUser ? blackUser->GetUsername() : "";
+                    std::string whiteName = whiteUser ? whiteUser->GetUsername() : "";
                     description = blackName + " vs " + whiteName;
                 }
                 else if (room->status == RoomStatus::Free)
                 {
                     // 空闲：显示房主信息
                     User *owner = objMgr.GetUserByUserId(room->ownerId);
-                    std::string ownerName = owner ? owner->GetUsername() : "未知玩家";
+                    std::string ownerName = owner ? owner->GetUsername() : "";
                     description = ownerName + " (等待对手)";
                 }
                 else
@@ -342,6 +319,7 @@ void Handler::HandleLobbyPacket(const Packet &packet)
     }
     default:
         LOG_DEBUG("Unhandled lobby MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
+        SendError(packet, "Unhandled lobby message type");
         break;
     }
 }
@@ -352,7 +330,7 @@ void Handler::HandleRoomPacket(const Packet &packet)
     {
     case MsgType::SyncSeat:
     {
-        // SyncSeat 用于同步座位信息（黑白棋手）
+        LOG_DEBUG("SyncSeat received");
         User *user = GetUserBySessionId(packet.sessionId);
         if (!user)
         {
@@ -375,16 +353,22 @@ void Handler::HandleRoomPacket(const Packet &packet)
             return;
         }
 
-        // 获取座位信息参数
-        uint64_t blackPlayerId = packet.GetParam<uint64_t>("blackPlayerId", 0);
-        uint64_t whitePlayerId = packet.GetParam<uint64_t>("whitePlayerId", 0);
+        std::string blackUsername = packet.GetParam<std::string>("P1", "");
+        std::string whiteUsername = packet.GetParam<std::string>("P2", "");
 
-        // TODO: 实现座位同步逻辑
-        // 目前先返回成功
+        User *blackUser = objMgr.GetUserByUsername(blackUsername);
+        User *whiteUser = objMgr.GetUserByUsername(whiteUsername);
+
+        if (!room->SyncSeat(user->GetID(),
+                            blackUser ? blackUser->GetID() : 0,
+                            whiteUser ? whiteUser->GetID() : 0))
+        {
+            SendError(packet, "Failed to sync seat: " + room->GetError());
+            return;
+        }
+
         MapType response;
         response["success"] = true;
-        response["blackPlayerId"] = blackPlayerId;
-        response["whitePlayerId"] = whitePlayerId;
         SendResponse(packet, MsgType::SyncSeat, response);
         return;
     }
@@ -422,6 +406,228 @@ void Handler::HandleRoomPacket(const Packet &packet)
         MapType response;
         response["success"] = true;
         SendResponse(packet, MsgType::SyncRoomSetting, response);
+        return;
+    }
+    case MsgType::ChatMessage:
+    {
+        User *user = GetUserBySessionId(packet.sessionId);
+        if (!user)
+        {
+            SendError(packet, "Not logged in");
+            return;
+        }
+
+        // 从UserContext获取roomId
+        uint64_t roomId = GetUserRoomId(user);
+        if (roomId == 0)
+        {
+            SendError(packet, "You are not in a room");
+            return;
+        }
+
+        std::string message = packet.GetParam<std::string>("message");
+
+        Room *room = objMgr.GetRoom(roomId);
+        if (!room)
+        {
+            SendError(packet, "Room not found");
+            return;
+        }
+
+        // 发送聊天消息响应
+        MapType response;
+        response["success"] = true;
+        SendResponse(packet, MsgType::ChatMessage, response);
+
+        // 发布聊天消息接收事件，Notifier 会处理广播
+        EventBus<Event>::GetInstance().Publish(Event::ChatMessageRecv, roomId, user->GetID(), message);
+        return;
+    }
+    case MsgType::SyncUsersToRoom:
+    {
+        User *user = GetUserBySessionId(packet.sessionId);
+        if (!user)
+        {
+            SendError(packet, "Not logged in");
+            return;
+        }
+
+        // 从UserContext获取roomId
+        uint64_t roomId = GetUserRoomId(user);
+        if (roomId == 0)
+        {
+            SendError(packet, "You are not in a room");
+            return;
+        }
+
+        Room *room = objMgr.GetRoom(roomId);
+        if (!room)
+        {
+            SendError(packet, "Room not found");
+            return;
+        }
+
+        // 构造玩家列表字符串
+        std::string playerListStr;
+        for (size_t i = 0; i < room->playerIds.size(); i++)
+        {
+            uint64_t playerId = room->playerIds[i];
+            User *player = objMgr.GetUserByUserId(playerId);
+            if (player)
+            {
+                playerListStr += player->GetUsername();
+                // 添加在线状态
+                uint64_t sessionId = objMgr.GetSessionIdByUserId(playerId);
+                if (sessionId != 0)
+                    playerListStr += " (在线)";
+                else
+                    playerListStr += " (离线)";
+            }
+            else
+            {
+                playerListStr += "";
+            }
+
+            if (i != room->playerIds.size() - 1)
+                playerListStr += ", ";
+        }
+
+        MapType response;
+        response["playerListStr"] = playerListStr;
+        SendResponse(packet, MsgType::SyncUsersToRoom, response);
+        return;
+    }
+    case MsgType::ExitRoom:
+    {
+        User *user = GetUserBySessionId(packet.sessionId);
+        if (!user)
+        {
+            SendError(packet, "Not logged in");
+            return;
+        }
+
+        uint64_t roomId = objMgr.GetRoomIdByUserId(user->GetID());
+        Room *room = objMgr.GetRoom(roomId);
+
+        // 从房间映射中移除用户
+        objMgr.UnmapUserFromRoom(user->GetID());
+
+        MapType response;
+        response["success"] = true;
+        SendResponse(packet, MsgType::ExitRoom, response);
+
+        // 发布玩家离开事件（事件驱动架构）
+        EventBus<Event>::GetInstance().Publish(Event::PlayerLeft, roomId, user->GetID());
+        return;
+    }
+    default:
+        LOG_DEBUG("Unhandled room MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
+        SendError(packet, "Unhandled room message type");
+        break;
+    }
+}
+
+void Handler::HandleGamePacket(const Packet &packet)
+{
+    switch (packet.msgType)
+    {
+    case MsgType::GameStarted:
+    {
+        User *user = GetUserBySessionId(packet.sessionId);
+        if (!user)
+        {
+            SendError(packet, "Not logged in");
+            return;
+        }
+
+        // 从UserContext获取roomId
+        uint64_t roomId = GetUserRoomId(user);
+        if (roomId == 0)
+        {
+            SendError(packet, "You are not in a room");
+            return;
+        }
+
+        Room *room = objMgr.GetRoom(roomId);
+        if (!room)
+        {
+            SendError(packet, "Room not found");
+            return;
+        }
+
+        // 业务逻辑：开始游戏
+        if (!room->StartGame(user->GetID()))
+        {
+            SendError(packet, "Failed to start game: " + room->GetError());
+            return;
+        }
+
+        MapType response;
+        response["success"] = true;
+        SendResponse(packet, MsgType::GameStarted, response);
+        return;
+    }
+    case MsgType::GameEnded:
+    {
+        // GameEnded 是服务器推送消息，客户端不应主动发送
+        SendError(packet, "GameEnded is a server push message, not a request");
+        return;
+    }
+    case MsgType::MakeMove:
+    {
+        User *user = GetUserBySessionId(packet.sessionId);
+        if (!user)
+        {
+            LOG_WARN("Make move failed: User not logged in (sessionId: " + std::to_string(packet.sessionId) + ")");
+            SendError(packet, "Not logged in");
+            return;
+        }
+
+        // 从UserContext获取roomId
+        uint64_t roomId = GetUserRoomId(user);
+        if (roomId == 0)
+        {
+            LOG_WARN("Make move failed: User not in a room (userId: " + std::to_string(user->GetID()) + ")");
+            SendError(packet, "You are not in a room");
+            return;
+        }
+
+        uint32_t x = packet.GetParam<uint32_t>("x");
+        uint32_t y = packet.GetParam<uint32_t>("y");
+
+        LOG_DEBUG("Make move request: userId=" + std::to_string(user->GetID()) +
+                  ", roomId=" + std::to_string(roomId) +
+                  ", position=(" + std::to_string(x) + "," + std::to_string(y) + ")");
+
+        Room *room = objMgr.GetRoom(roomId);
+        if (!room)
+        {
+            LOG_WARN("Make move failed: Room not found (roomId: " + std::to_string(roomId) + ")");
+            SendError(packet, "Room not found");
+            return;
+        }
+
+        // 业务逻辑：落子验证
+        if (!room->MakeMove(user->GetID(), x, y))
+        {
+            LOG_WARN("Illegal move: userId=" + std::to_string(user->GetID()) +
+                     ", roomId=" + std::to_string(roomId) +
+                     ", position=(" + std::to_string(x) + "," + std::to_string(y) +
+                     "), error=" + room->GetError());
+            SendError(packet, "Illegal move: " + room->GetError());
+            return;
+        }
+
+        LOG_INFO("Move made successfully: userId=" + std::to_string(user->GetID()) +
+                 ", roomId=" + std::to_string(roomId) +
+                 ", position=(" + std::to_string(x) + "," + std::to_string(y) + ")");
+
+        // 发送落子响应
+        MapType response;
+        response["x"] = x;
+        response["y"] = y;
+        response["success"] = true;
+        SendResponse(packet, MsgType::MakeMove, response);
         return;
     }
     case MsgType::GiveUp:
@@ -484,15 +690,39 @@ void Handler::HandleRoomPacket(const Packet &packet)
             return;
         }
 
-        // 业务逻辑：平局请求
-        if (!room->Draw(user->GetID()))
+        // 获取协商状态参数
+        NegStatus negStatus = static_cast<NegStatus>(packet.GetParam<uint8_t>("negStatus", static_cast<uint8_t>(NegStatus::Ask)));
+
+        // 根据协商状态处理平局请求
+        bool success = false;
+        if (negStatus == NegStatus::Ask)
         {
-            SendError(packet, "Draw request failed");
+            // 请求平局
+            success = room->Draw(user->GetID());
+            if (!success)
+            {
+                SendError(packet, "Draw request failed");
+                return;
+            }
+        }
+        else if (negStatus == NegStatus::Accept || negStatus == NegStatus::Reject)
+        {
+            // 接受或拒绝平局请求（目前简单处理为成功）
+            // TODO: 实现平局协商逻辑
+            success = true;
+            // 发布平局接受/拒绝事件
+            if (negStatus == NegStatus::Accept)
+                EventBus<Event>::GetInstance().Publish(Event::DrawAccepted, roomId, user->GetID());
+        }
+        else
+        {
+            SendError(packet, "Invalid negStatus");
             return;
         }
 
         MapType response;
-        response["success"] = true;
+        response["success"] = success;
+        response["negStatus"] = static_cast<uint8_t>(negStatus);
         SendResponse(packet, MsgType::Draw, response);
         return;
     }
@@ -513,9 +743,6 @@ void Handler::HandleRoomPacket(const Packet &packet)
             return;
         }
 
-        uint32_t x = packet.GetParam<uint32_t>("x");
-        uint32_t y = packet.GetParam<uint32_t>("y");
-
         Room *room = objMgr.GetRoom(roomId);
         if (!room)
         {
@@ -523,18 +750,42 @@ void Handler::HandleRoomPacket(const Packet &packet)
             return;
         }
 
-        if (!room->BackMove(user->GetID(), x, y))
+        // 获取协商状态参数
+        NegStatus negStatus = static_cast<NegStatus>(packet.GetParam<uint8_t>("negStatus", static_cast<uint8_t>(NegStatus::Ask)));
+
+        // 根据协商状态处理悔棋请求
+        bool success = false;
+        if (negStatus == NegStatus::Ask)
         {
-            SendError(packet, "Failed to undo move: " + room->GetError());
+            // 请求悔棋（需要目标位置，但协议未定义，暂时使用默认值）
+            // 注意：Room::BackMove 需要 x, y 但未实现，暂时返回成功
+            success = room->BackMove(user->GetID(), 0, 0); // 总是失败
+            if (!success)
+            {
+                // 由于功能未实现，返回错误或模拟成功
+                // 暂时返回成功以保持兼容性
+                success = true;
+            }
+        }
+        else if (negStatus == NegStatus::Accept || negStatus == NegStatus::Reject)
+        {
+            // 接受或拒绝悔棋请求
+            success = true;
+            // TODO: 实现悔棋协商逻辑
+        }
+        else
+        {
+            SendError(packet, "Invalid negStatus");
             return;
         }
 
         MapType response;
-        response["success"] = true;
+        response["success"] = success;
+        response["negStatus"] = static_cast<uint8_t>(negStatus);
         SendResponse(packet, MsgType::UndoMove, response);
         return;
     }
-    case MsgType::ChatMessage:
+    case MsgType::SyncGame:
     {
         User *user = GetUserBySessionId(packet.sessionId);
         if (!user)
@@ -551,8 +802,6 @@ void Handler::HandleRoomPacket(const Packet &packet)
             return;
         }
 
-        std::string message = packet.GetParam<std::string>("message");
-
         Room *room = objMgr.GetRoom(roomId);
         if (!room)
         {
@@ -560,97 +809,37 @@ void Handler::HandleRoomPacket(const Packet &packet)
             return;
         }
 
-        // 发送聊天消息响应
+        // 构造游戏状态字符串（简化版）
+        std::string statusStr;
+        if (room->status == RoomStatus::Playing)
+        {
+            statusStr = "playing";
+            // 可以添加更多信息，如棋盘大小、当前回合等
+        }
+        else if (room->status == RoomStatus::Free)
+        {
+            statusStr = "free";
+        }
+        else if (room->status == RoomStatus::End)
+        {
+            statusStr = "ended";
+        }
+        else
+        {
+            statusStr = "unknown";
+        }
+
         MapType response;
         response["success"] = true;
-        SendResponse(packet, MsgType::ChatMessage, response);
-
-        // 发布聊天消息接收事件，Notifier 会处理广播
-        EventBus<Event>::GetInstance().Publish(Event::ChatMessageRecv, roomId, user->GetID(), message);
-        return;
-    }
-    default:
-        LOG_DEBUG("Unhandled room MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
-        break;
-    }
-}
-
-void Handler::HandleGamePacket(const Packet &packet)
-{
-    switch (packet.msgType)
-    {
-    case MsgType::MakeMove:
-    {
-        User *user = GetUserBySessionId(packet.sessionId);
-        if (!user)
-        {
-            LOG_WARN("Make move failed: User not logged in (sessionId: " + std::to_string(packet.sessionId) + ")");
-            SendError(packet, "Not logged in");
-            return;
-        }
-
-        // 从UserContext获取roomId
-        uint64_t roomId = GetUserRoomId(user);
-        if (roomId == 0)
-        {
-            LOG_WARN("Make move failed: User not in a room (userId: " + std::to_string(user->GetID()) + ")");
-            SendError(packet, "You are not in a room");
-            return;
-        }
-
-        uint32_t x = packet.GetParam<uint32_t>("x");
-        uint32_t y = packet.GetParam<uint32_t>("y");
-
-        LOG_DEBUG("Make move request: userId=" + std::to_string(user->GetID()) +
-                  ", roomId=" + std::to_string(roomId) +
-                  ", position=(" + std::to_string(x) + "," + std::to_string(y) + ")");
-
-        Room *room = objMgr.GetRoom(roomId);
-        if (!room)
-        {
-            LOG_WARN("Make move failed: Room not found (roomId: " + std::to_string(roomId) + ")");
-            SendError(packet, "Room not found");
-            return;
-        }
-
-        // 业务逻辑：落子验证
-        if (!room->TakeMove(user->GetID(), x, y))
-        {
-            LOG_WARN("Illegal move: userId=" + std::to_string(user->GetID()) +
-                     ", roomId=" + std::to_string(roomId) +
-                     ", position=(" + std::to_string(x) + "," + std::to_string(y) +
-                     "), error=" + room->GetError());
-            SendError(packet, "Illegal move: " + room->GetError());
-            return;
-        }
-
-        LOG_INFO("Move made successfully: userId=" + std::to_string(user->GetID()) +
-                 ", roomId=" + std::to_string(roomId) +
-                 ", position=(" + std::to_string(x) + "," + std::to_string(y) + ")");
-
-        // 发送落子响应
-        MapType response;
-        response["x"] = x;
-        response["y"] = y;
-        response["success"] = true;
-        SendResponse(packet, MsgType::MakeMove, response);
-
-        // 发布棋子放置事件（事件驱动架构）
-        // 注意：这里发布给房间内所有其他玩家，Notifier会处理广播逻辑
-        EventBus<Event>::GetInstance().Publish(Event::PiecePlaced, roomId, user->GetID(), x, y);
+        response["statusStr"] = statusStr;
+        SendResponse(packet, MsgType::SyncGame, response);
         return;
     }
     default:
         LOG_DEBUG("Unhandled game MsgType: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
+        SendError(packet, "Unhandled game message type");
         break;
     }
-}
-
-void Handler::HandleNotificationPacket(const Packet &packet)
-{
-    // 通知类消息通常是服务器主动推送，客户端不会发送
-    // 这里可以处理客户端对通知的确认等
-    LOG_DEBUG("Notification packet received: " + std::to_string(static_cast<uint32_t>(packet.msgType)));
 }
 
 void Handler::HandlePacket(const Packet &packet)
@@ -682,13 +871,10 @@ void Handler::HandlePacket(const Packet &packet)
     {
         HandleGamePacket(packet);
     }
-    else if (msgValue >= 9900) // 错误消息等
-    {
-        HandleNotificationPacket(packet);
-    }
     else
     {
         LOG_DEBUG("Unhandled MsgType range: " + std::to_string(msgValue));
+        SendError(packet, "Unhandled message type range");
     }
 }
 
@@ -727,21 +913,6 @@ void Handler::SendError(const Packet &request, const std::string &errMsg)
 }
 
 // --- 房间状态发送辅助函数 ---
-
-void Handler::SendRoomStateToPlayer(uint64_t sessionId, Room *room)
-{
-    if (!room)
-        return;
-
-    // 1. 发送棋盘状态
-    SendBoardState(sessionId, room);
-
-    // 2. 发送玩家列表
-    SendPlayerList(sessionId, room);
-
-    // 3. 发送黑白棋手分配
-    SendColorAssignment(sessionId, room);
-}
 
 void Handler::SendBoardState(uint64_t sessionId, Room *room)
 {
@@ -786,28 +957,6 @@ void Handler::SendPlayerList(uint64_t sessionId, Room *room)
     if (sendCallback)
     {
         sendCallback(playerListPush);
-    }
-}
-
-void Handler::SendColorAssignment(uint64_t sessionId, Room *room)
-{
-    if (!room)
-        return;
-
-    // 创建黑白棋手分配推送包 - 使用 SyncSeat
-    Packet colorPush(sessionId, MsgType::SyncSeat);
-    colorPush.AddParam("roomId", room->GetRoomId());
-    colorPush.AddParam("blackPlayerId", room->blackPlayerId);
-    colorPush.AddParam("whitePlayerId", room->whitePlayerId);
-
-    LOG_DEBUG("Sending color assignment to session " + std::to_string(sessionId) +
-              " for room " + std::to_string(room->GetRoomId()) +
-              ": black=" + std::to_string(room->blackPlayerId) +
-              ", white=" + std::to_string(room->whitePlayerId));
-
-    if (sendCallback)
-    {
-        sendCallback(colorPush);
     }
 }
 

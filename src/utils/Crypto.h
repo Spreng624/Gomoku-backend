@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <cstdint>
-#include "TimeWheel.hpp"
+#include "TimeTools.hpp"
 
 std::vector<uint8_t> GenerateRandomBytes(size_t size);
 

@@ -44,7 +44,7 @@ enum MsgType : uint32_t
                         //        <-- roomList
 
     // 300-399 房间内部操作
-    SyncSeat = 300,  // P1, P2  --> success, (P1, P2) / error
+    SyncSeat = 300,  // P1, P2  --> success, None / error
                      //         <-- P1, P2
     SyncRoomSetting, // config  --> success, None / error
                      //         <-- config
@@ -54,18 +54,18 @@ enum MsgType : uint32_t
     ExitRoom,        // None    --> success, None / error
 
     // 400-499 游戏操作
-    GameStarted,    // None      --> success, None / error
-                    //           <-- None
-    GameEnded,      //           <-- msg    唯一无请求的消息
-    MakeMove = 400, // x, y      --> success, None / error
-                    //           <-- x, y
-    GiveUp,         // None      --> success, None / error
-    Draw,           // negStatus --> success, None / error
-                    //           <-- negStatus
-    UndoMove,       // negStatus --> success, None / error
-                    //           <-- negStatus
-    SyncGame,       // None      --> success, None / error
-                    //           <-- statusStr 一个 配置||行棋历史 的字符串搞定同步问题
+    GameStarted = 400, // None      --> success, None / error
+                       //           <-- None
+    GameEnded,         //           <-- msg    唯一无请求的消息
+    MakeMove,          // x, y      --> success, None / error
+                       //           <-- x, y
+    GiveUp,            // None      --> success, None / error
+    Draw,              // negStatus --> success, None / error
+                       //           <-- negStatus
+    UndoMove,          // negStatus --> success, None / error
+                       //           <-- negStatus
+    SyncGame,          // None      --> success, None / error
+                       //           <-- statusStr 一个 配置||行棋历史 的字符串搞定同步问题
 
     // 9999 错误
     Error = 9999,

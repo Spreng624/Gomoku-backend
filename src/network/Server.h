@@ -3,7 +3,7 @@
 
 #include "Frame.h"
 #include "Packet.h"
-#include "TimeWheel.hpp"
+#include "TimeTools.hpp"
 #include "Crypto.h"
 
 #include <vector>
@@ -46,7 +46,7 @@ private:
     std::map<SOCKET_TYPE, std::vector<uint8_t>> _session_buffers;
 
     // Session 合并后的数据与定时轮
-    TimeWheel tw;
+    // 使用 TimeTools 替代 TimeWheel
     std::unordered_map<int, uint64_t> sockToId;
     std::unordered_map<uint64_t, std::unique_ptr<SessionContext>> idToSession;
 

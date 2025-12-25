@@ -6,66 +6,54 @@ Notifier::Notifier(ObjectManager &objMgr)
     : objMgr(objMgr)
 {
     // 订阅所有游戏事件
-    auto token1 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::PlayerJoined,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t userId)
-                                                                                   { OnPlayerJoined(roomId, userId); }));
-    auto token2 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::PlayerLeft,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t userId)
-                                                                                   { OnPlayerLeft(roomId, userId); }));
-    auto token3 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t, uint32_t, uint32_t>(Event::PiecePlaced,
-                                                                                                   std::function<void(uint64_t, uint64_t, uint32_t, uint32_t)>(
-                                                                                                       [this](uint64_t roomId, uint64_t userId, uint32_t x, uint32_t y)
-                                                                                                       { OnPiecePlaced(roomId, userId, x, y); }));
-    auto token4 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::GameEnded,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t winnerId)
-                                                                                   { OnGameEnded(roomId, winnerId); }));
-    auto token5 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t, const std::string &>(Event::RoomStatusChanged,
-                                                                                                    std::function<void(uint64_t, uint64_t, const std::string &)>(
-                                                                                                        [this](uint64_t roomId, uint64_t userId, const std::string &status)
-                                                                                                        { OnRoomStatusChanged(roomId, userId, status); }));
-    auto token6 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::DrawRequested,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t userId)
-                                                                                   { OnDrawRequested(roomId, userId); }));
-    auto token7 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::DrawAccepted,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t userId)
-                                                                                   { OnDrawAccepted(roomId, userId); }));
-    auto token8 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::GiveUpRequested,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t userId)
-                                                                                   { OnGiveUpRequested(roomId, userId); }));
-    auto token9 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t>(Event::RoomCreated,
-                                                                               std::function<void(uint64_t, uint64_t)>(
-                                                                                   [this](uint64_t roomId, uint64_t ownerId)
-                                                                                   { OnRoomCreated(roomId, ownerId); }));
-    auto token10 = EventBus<Event>::GetInstance().Subscribe<uint64_t>(Event::UserLoggedIn,
-                                                                      std::function<void(uint64_t)>(
-                                                                          [this](uint64_t userId)
-                                                                          { OnUserLoggedIn(userId); }));
+    auto token1 = EventBus<Event>::GetInstance().Subscribe(Event::PlayerJoined,
+                                                           [this](uint64_t roomId, uint64_t userId)
+                                                           { OnPlayerJoined(roomId, userId); });
+    auto token2 = EventBus<Event>::GetInstance().Subscribe(Event::PlayerLeft,
+                                                           [this](uint64_t roomId, uint64_t userId)
+                                                           { OnPlayerLeft(roomId, userId); });
+    auto token3 = EventBus<Event>::GetInstance().Subscribe(Event::PiecePlaced,
+                                                           [this](uint64_t roomId, uint64_t userId, uint32_t x, uint32_t y)
+                                                           { OnPiecePlaced(roomId, userId, x, y); });
+    auto token4 = EventBus<Event>::GetInstance().Subscribe(Event::GameEnded,
+                                                           [this](uint64_t roomId, uint64_t winnerId)
+                                                           { OnGameEnded(roomId, winnerId); });
+    auto token5 = EventBus<Event>::GetInstance().Subscribe(Event::RoomStatusChanged,
+                                                           [this](uint64_t roomId, uint64_t userId, const std::string &status)
+                                                           { OnRoomStatusChanged(roomId, userId, status); });
+    auto token6 = EventBus<Event>::GetInstance().Subscribe(Event::DrawRequested,
+                                                           [this](uint64_t roomId, uint64_t userId)
+                                                           { OnDrawRequested(roomId, userId); });
+    auto token7 = EventBus<Event>::GetInstance().Subscribe(Event::DrawAccepted,
+                                                           [this](uint64_t roomId, uint64_t userId)
+                                                           { OnDrawAccepted(roomId, userId); });
+    auto token8 = EventBus<Event>::GetInstance().Subscribe(Event::GiveUpRequested,
+                                                           [this](uint64_t roomId, uint64_t userId)
+                                                           { OnGiveUpRequested(roomId, userId); });
+    auto token9 = EventBus<Event>::GetInstance().Subscribe(Event::RoomCreated,
+                                                           [this](uint64_t roomId, uint64_t ownerId)
+                                                           { OnRoomCreated(roomId, ownerId); });
+    auto token10 = EventBus<Event>::GetInstance().Subscribe(Event::UserLoggedIn,
+                                                            [this](uint64_t userId)
+                                                            { OnUserLoggedIn(userId); });
     auto token11 = EventBus<Event>::GetInstance().Subscribe(Event::RoomListUpdated,
-                                                            std::function<void()>(
-                                                                [this]()
-                                                                { OnRoomListUpdated(); }));
-    auto token12 = EventBus<Event>::GetInstance().Subscribe<uint64_t>(Event::GameStarted,
-                                                                      std::function<void(uint64_t)>(
-                                                                          [this](uint64_t roomId)
-                                                                          { OnGameStarted(roomId); }));
-    auto token13 = EventBus<Event>::GetInstance().Subscribe<uint64_t, uint64_t, const std::string &>(Event::ChatMessageRecv,
-                                                                                                     std::function<void(uint64_t, uint64_t, const std::string &)>(
-                                                                                                         [this](uint64_t roomId, uint64_t userId, const std::string &message)
-                                                                                                         { OnChatMessageRecv(roomId, userId, message); }));
-    auto token14 = EventBus<Event>::GetInstance().Subscribe<uint64_t>(Event::RoomSync,
-                                                                      std::function<void(uint64_t)>(
-                                                                          [this](uint64_t roomId)
-                                                                          { OnRoomSync(roomId); }));
-    auto token15 = EventBus<Event>::GetInstance().Subscribe<uint64_t>(Event::GameSync,
-                                                                      std::function<void(uint64_t)>(
-                                                                          [this](uint64_t roomId)
-                                                                          { OnGameSync(roomId); }));
+                                                            [this]()
+                                                            { OnRoomListUpdated(); });
+    auto token12 = EventBus<Event>::GetInstance().Subscribe(Event::GameStarted,
+                                                            [this](uint64_t roomId)
+                                                            { OnGameStarted(roomId); });
+    auto token13 = EventBus<Event>::GetInstance().Subscribe(Event::ChatMessageRecv,
+                                                            [this](uint64_t roomId, uint64_t userId, const std::string &message)
+                                                            { OnChatMessageRecv(roomId, userId, message); });
+    auto token14 = EventBus<Event>::GetInstance().Subscribe(Event::RoomSync,
+                                                            [this](uint64_t roomId)
+                                                            { OnRoomSync(roomId); });
+    auto token15 = EventBus<Event>::GetInstance().Subscribe(Event::GameSync,
+                                                            [this](uint64_t roomId)
+                                                            { OnGameSync(roomId); });
+    auto token16 = EventBus<Event>::GetInstance().Subscribe(Event::SyncSeat,
+                                                            [this](uint64_t roomId, uint64_t blackPlayerId, uint64_t whitePlayerId)
+                                                            { OnSyncSeat(roomId, blackPlayerId, whitePlayerId); });
 
     // 保存令牌以防止过早销毁
     tokens.push_back(token1);
@@ -83,6 +71,7 @@ Notifier::Notifier(ObjectManager &objMgr)
     tokens.push_back(token13);
     tokens.push_back(token14);
     tokens.push_back(token15);
+    tokens.push_back(token16);
 }
 
 Notifier::~Notifier()
@@ -120,8 +109,6 @@ void Notifier::OnPiecePlaced(uint64_t roomId, uint64_t userId, uint32_t x, uint3
 {
     // 使用 MakeMove 推送，因为棋子放置就是落子
     Packet push(0, MsgType::MakeMove);
-    push.AddParam("roomId", roomId);
-    push.AddParam("userId", userId);
     push.AddParam("x", x);
     push.AddParam("y", y);
 
@@ -133,7 +120,9 @@ void Notifier::OnGameEnded(uint64_t roomId, uint64_t winnerId)
     Packet push(0, MsgType::GameEnded);
     push.AddParam("roomId", roomId);
     push.AddParam("winnerId", winnerId);
-
+    User *winner = objMgr.GetUserByUserId(winnerId);
+    std::string msg = winner->username + " 获胜！";
+    push.AddParam("msg", msg);
     BroadcastToRoom(roomId, push);
 }
 
@@ -243,9 +232,6 @@ void Notifier::OnRoomCreated(uint64_t roomId, uint64_t ownerId)
 
     // 3. 广播玩家列表
     SendPlayerListToRoom(room);
-
-    // 4. 广播黑白棋手分配
-    SendColorAssignmentToRoom(room);
 }
 
 void Notifier::SendBoardStateToRoom(Room *room)
@@ -288,16 +274,12 @@ void Notifier::SendColorAssignmentToRoom(Room *room)
     if (!room)
         return;
 
-    // 使用 SyncSeat 推送颜色分配
-    Packet seatPush(0, MsgType::SyncSeat);
-    seatPush.AddParam("roomId", room->GetRoomId());
-    seatPush.AddParam("blackPlayerId", room->blackPlayerId);
-    seatPush.AddParam("whitePlayerId", room->whitePlayerId);
+    // 发布 SyncSeat 事件，让事件总线处理
+    EventBus<Event>::GetInstance().Publish(Event::SyncSeat, room->GetRoomId(), room->blackPlayerId, room->whitePlayerId);
 
-    LOG_DEBUG("Broadcasting color assignment for room " + std::to_string(room->GetRoomId()) +
+    LOG_DEBUG("Published SyncSeat event for room " + std::to_string(room->GetRoomId()) +
               ": black=" + std::to_string(room->blackPlayerId) +
               ", white=" + std::to_string(room->whitePlayerId));
-    BroadcastToRoom(room->GetRoomId(), seatPush);
 }
 
 // --- 用户登录事件处理 ---
@@ -448,15 +430,15 @@ void Notifier::BroadcastRoomListUpdate()
                     User *blackUser = objMgr.GetUserByUserId(room->blackPlayerId);
                     User *whiteUser = objMgr.GetUserByUserId(room->whitePlayerId);
 
-                    std::string blackName = blackUser ? blackUser->GetUsername() : "未知玩家";
-                    std::string whiteName = whiteUser ? whiteUser->GetUsername() : "未知玩家";
+                    std::string blackName = blackUser ? blackUser->GetUsername() : "";
+                    std::string whiteName = whiteUser ? whiteUser->GetUsername() : "";
                     description = blackName + " vs " + whiteName;
                 }
                 else if (room->status == RoomStatus::Free)
                 {
                     // 空闲：显示房主信息
                     User *owner = objMgr.GetUserByUserId(room->ownerId);
-                    std::string ownerName = owner ? owner->GetUsername() : "未知玩家";
+                    std::string ownerName = owner ? owner->GetUsername() : "";
                     description = ownerName + " (等待对手)";
                 }
                 else
@@ -530,5 +512,34 @@ void Notifier::OnGameSync(uint64_t roomId)
     push.AddParam("roomId", roomId);
 
     // TODO: 添加游戏同步数据
+    BroadcastToRoom(roomId, push);
+}
+
+void Notifier::OnSyncSeat(uint64_t roomId, uint64_t blackPlayerId, uint64_t whitePlayerId)
+{
+    // 查询黑棋玩家用户名
+    std::string blackUsername = "";
+    User *blackUser = objMgr.GetUserByUserId(blackPlayerId);
+    if (blackUser)
+    {
+        blackUsername = blackUser->GetUsername();
+    }
+
+    // 查询白棋玩家用户名
+    std::string whiteUsername = "";
+    User *whiteUser = objMgr.GetUserByUserId(whitePlayerId);
+    if (whiteUser)
+    {
+        whiteUsername = whiteUser->GetUsername();
+    }
+
+    // 使用 SyncSeat 推送座位分配（包含用户名）
+    Packet push(0, MsgType::SyncSeat);
+    push.AddParam("P1", blackUsername);
+    push.AddParam("P2", whiteUsername);
+
+    LOG_DEBUG("Broadcasting seat sync for room " + std::to_string(roomId) +
+              ": black=" + blackUsername + "(" + std::to_string(blackPlayerId) + ")" +
+              ", white=" + whiteUsername + "(" + std::to_string(whitePlayerId) + ")");
     BroadcastToRoom(roomId, push);
 }

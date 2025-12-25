@@ -67,8 +67,8 @@ bool Server::SetNonBlocking(SOCKET_TYPE sock)
 
 #endif
 
-// 构造时初始化 TimeWheel
-Server::Server() : tw(120, std::chrono::seconds(1))
+// 构造时初始化
+Server::Server()
 {
     port = DEFAULT_PORT;
     max_fd = 0;
@@ -303,9 +303,9 @@ uint64_t Server::NewSession(int sock)
     idToSession[sessionId] = std::make_unique<SessionContext>(sock, sessionId);
     sockToId[sock] = sessionId;
 
-    // 添加超时清理任务（示例延迟槽 10）
-    tw.AddTask(30, [this, sessionId]()
-               {
+    // 添加超时清理任务（延迟30个槽位，每个槽位1秒）
+    TimeTools::StaticAddTimeWheelTask(30, [this, sessionId]()
+                                      {
                      auto it = idToSession.find(sessionId);
                      if (it == idToSession.end()) return;
                      auto *session = it->second.get();

@@ -66,10 +66,23 @@ int Room::RemovePlayer(uint64_t userId)
         }
     }
 
+    bool seatChanged = false;
     if (userId == blackPlayerId)
+    {
         blackPlayerId = 0;
+        seatChanged = true;
+    }
     if (userId == whitePlayerId)
+    {
         whitePlayerId = 0;
+        seatChanged = true;
+    }
+
+    // 如果座位发生变化，发布SyncSeat事件
+    if (seatChanged)
+    {
+        EventBus<Event>::GetInstance().Publish(Event::SyncSeat, roomId, blackPlayerId, whitePlayerId);
+    }
 
     // 发布玩家离开事件
     EventBus<Event>::GetInstance().Publish(Event::PlayerLeft, roomId, userId);
@@ -115,21 +128,9 @@ bool Room::EditRoomSetting(uint64_t userId, const MapType &settings)
 
 bool Room::StartGame(uint64_t userId)
 {
-    if (userId != ownerId)
-    {
-        error = "Only room owner can start game";
-        return false;
-    }
-
     if (status == RoomStatus::Playing)
     {
         error = "Game already started";
-        return false;
-    }
-
-    if (playerIds.size() < 2)
-    {
-        error = "Need at least 2 players";
         return false;
     }
 
@@ -154,84 +155,71 @@ bool Room::StartGame(uint64_t userId)
     return true;
 }
 
-bool Room::TakeBlack(uint64_t userId)
+bool Room::SyncSeat(uint64_t userId, uint64_t blackPlayerId, uint64_t whitePlayerId)
 {
+    // 基础过滤
     if (status == RoomStatus::Playing)
     {
         error = "Game already started";
         return false;
     }
-
-    if (std::find(playerIds.begin(), playerIds.end(), userId) == playerIds.end())
+    if (!isInRoom(userId))
     {
         error = "Player not in room";
         return false;
     }
 
-    if (blackPlayerId != 0 && blackPlayerId != userId)
+    if (userId == 0)
     {
-        error = "Black already taken";
-        return false;
-    }
-
-    blackPlayerId = userId;
-
-    // 发布房间状态变化事件（颜色选择）
-    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "black_selected");
-
-    return true;
-}
-
-bool Room::TakeWhite(uint64_t userId)
-{
-    if (status == RoomStatus::Playing)
-    {
-        error = "Game already started";
-        return false;
-    }
-
-    if (std::find(playerIds.begin(), playerIds.end(), userId) == playerIds.end())
-    {
-        error = "Player not in room";
-        return false;
-    }
-
-    if (whitePlayerId != 0 && whitePlayerId != userId)
-    {
-        error = "White already taken";
-        return false;
-    }
-
-    whitePlayerId = userId;
-
-    // 发布房间状态变化事件（颜色选择）
-    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "white_selected");
-
-    return true;
-}
-
-bool Room::CancelTake(uint64_t userId)
-{
-    if (userId == blackPlayerId)
-    {
-        blackPlayerId = 0;
-        // 发布房间状态变化事件（取消颜色选择）
-        EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "black_canceled");
+        // 用来主动推送SyncSeat事件
+        EventBus<Event>::GetInstance().Publish(Event::SyncSeat, roomId, this->blackPlayerId, this->whitePlayerId);
         return true;
     }
-    if (userId == whitePlayerId)
+    if (blackPlayerId == 0 && whitePlayerId == 0)
     {
-        whitePlayerId = 0;
-        // 发布房间状态变化事件（取消颜色选择）
-        EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "white_canceled");
+        // 取消就坐请求，如果玩家已经就坐，则取消座位
+        if (userId == this->blackPlayerId)
+        {
+            this->blackPlayerId = 0;
+        }
+        else if (userId == this->whitePlayerId)
+        {
+            this->whitePlayerId = 0;
+        }
+
+        EventBus<Event>::GetInstance().Publish(Event::SyncSeat, roomId, this->blackPlayerId, this->whitePlayerId);
         return true;
     }
+    else if (userId == blackPlayerId && whitePlayerId == 0)
+    {
+        // 玩家选择黑棋
+        if (this->blackPlayerId == 0 || this->blackPlayerId == userId)
+        {
+            this->blackPlayerId = userId;
+            if (this->whitePlayerId == userId)
+                this->whitePlayerId = 0;
+            EventBus<Event>::GetInstance().Publish(Event::SyncSeat, roomId, this->blackPlayerId, this->whitePlayerId);
+            return true;
+        }
+    }
+    else if (userId == whitePlayerId && blackPlayerId == 0)
+    {
+        // 玩家选择白棋
+        if (this->whitePlayerId == 0 || this->whitePlayerId == userId)
+        {
+            this->whitePlayerId = userId;
+            if (this->blackPlayerId == userId)
+                this->blackPlayerId = 0;
+            EventBus<Event>::GetInstance().Publish(Event::SyncSeat, roomId, this->blackPlayerId, this->whitePlayerId);
+            return true;
+        }
+    }
 
-    error = "Player did not take any color";
+    error = "Invalid Seat";
     return false;
 }
 
-bool Room::TakeMove(uint64_t userId, uint32_t x, uint32_t y)
+bool Room::MakeMove(uint64_t userId, uint32_t x, uint32_t y)
 {
     if (status != RoomStatus::Playing)
     {
@@ -263,27 +251,10 @@ bool Room::TakeMove(uint64_t userId, uint32_t x, uint32_t y)
     // 发布棋子放置事件
     EventBus<Event>::GetInstance().Publish(Event::PiecePlaced, roomId, userId, x, y);
 
-    Piece winner = game.checkWin(x, y);
-    if (winner != Piece::EMPTY)
+    if (game.checkWin(x, y) != Piece::EMPTY)
     {
         status = RoomStatus::End;
-
-        // 确定胜利者ID
-        uint64_t winnerId = 0;
-        if (winner == Piece::BLACK)
-        {
-            winnerId = blackPlayerId;
-        }
-        else if (winner == Piece::WHITE)
-        {
-            winnerId = whitePlayerId;
-        }
-
-        // 发布游戏结束事件
-        EventBus<Event>::GetInstance().Publish(Event::GameEnded, roomId, winnerId);
-
-        // 发布房间状态变化事件
-        EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, winnerId, "game_ended");
+        EventBus<Event>::GetInstance().Publish(Event::GameEnded, roomId, userId);
     }
 
     return true;
@@ -371,4 +342,14 @@ bool Room::GiveUp(uint64_t userId)
 std::string Room::GetError() const
 {
     return error;
+}
+
+// 私有辅助方法
+bool Room::isInRoom(uint64_t userId) const
+{
+    if (std::find(playerIds.begin(), playerIds.end(), userId) != playerIds.end())
+    {
+        return true;
+    }
+    return false;
 }

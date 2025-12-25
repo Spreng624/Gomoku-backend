@@ -71,14 +71,12 @@ bool Game::makeMove(int x, int y, Piece color)
     // 1. 检查坐标是否在棋盘范围内
     if (x < 0 || x >= this->boardSize || y < 0 || y >= this->boardSize)
     {
-        // cout << "Error: Move out of bounds." << endl;
         return false;
     }
 
     // 2. 检查位置是否为空
     if (board[x][y] != Piece::EMPTY)
     {
-        // cout << "Error: Position already occupied." << endl;
         return false;
     }
 

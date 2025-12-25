@@ -5,15 +5,15 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
-#include <algorithm>
 #include <memory>
-#include <any>
 #include <typeindex>
+#include <shared_mutex>
 #include <tuple>
-#include <type_traits>
+#include <algorithm> // 修复: std::remove_if 需要此头文件
 #include <utility>
-#include <cassert>
+#include "Logger.h"
 
+// 必须在此处定义 Event，否则其他文件引用 EventBus 时找不到 Event 类型
 enum class Event
 {
     // 系统事件
@@ -33,10 +33,10 @@ enum class Event
     CreateUser,      // -> ObjectManager
     CreateRoom,      // -> ObjectManager
 
-    // 游戏事件（用于服务器推送）
+    // 游戏事件
     PlayerJoined,      // 玩家加入房间
     PlayerLeft,        // 玩家离开房间
-    PiecePlaced,       // 棋子放置（不区分自己/对手）
+    PiecePlaced,       // 棋子放置
     GameStarted,       // 游戏开始
     GameEnded,         // 游戏结束
     RoomStatusChanged, // 房间状态变化
@@ -48,9 +48,11 @@ enum class Event
     RoomListUpdated,   // 房间列表已更新
     ChatMessageRecv,   // 聊天消息接收
     RoomSync,          // 房间同步
-    GameSync           // 游戏同步
+    GameSync,          // 游戏同步
+    SyncSeat           // 座位同步
 };
 
+// 辅助结构：用于提取 Lambda 或函数对象的参数类型
 template <typename T>
 struct function_traits : function_traits<decltype(&T::operator())>
 {
@@ -59,197 +61,135 @@ struct function_traits : function_traits<decltype(&T::operator())>
 template <typename ClassType, typename ReturnType, typename... Args>
 struct function_traits<ReturnType (ClassType::*)(Args...) const>
 {
-    using std_function_type = std::function<void(Args...)>;
+    using args_tuple = std::tuple<std::decay_t<Args>...>;
 };
 
-// 增加对非 const operator() 的支持
 template <typename ClassType, typename ReturnType, typename... Args>
 struct function_traits<ReturnType (ClassType::*)(Args...)>
 {
-    using std_function_type = std::function<void(Args...)>;
+    using args_tuple = std::tuple<std::decay_t<Args>...>;
 };
 
 template <typename T>
 class EventBus
 {
 private:
-    // 内部回调包装器基类，使用类型擦除
-    struct CallbackWrapperBase
+    // 抽象基类
+    struct HandlerBase
     {
-        virtual ~CallbackWrapperBase() = default;
-        virtual void call(const std::any &args) = 0;
-        virtual std::type_index get_type_index() const = 0;
+        virtual ~HandlerBase() = default;
         virtual bool is_expired() const = 0;
+        virtual void exec(void *args_ptr, std::type_index type_idx) = 0;
     };
 
-    // 可变参数模板的回调包装器
+    // 具体类型的处理器
     template <typename... Args>
-    struct CallbackWrapper : CallbackWrapperBase
+    struct Handler : HandlerBase
     {
-        std::function<void(Args...)> callback;
-        std::weak_ptr<void> wToken;
+        using CallbackFunc = std::function<void(Args...)>;
+        CallbackFunc callback;
+        std::weak_ptr<void> token;
 
-        CallbackWrapper(std::function<void(Args...)> cb, std::shared_ptr<void> token)
-            : callback(std::move(cb)), wToken(token) {}
+        Handler(CallbackFunc cb, std::shared_ptr<void> tk)
+            : callback(std::move(cb)), token(std::move(tk)) {}
 
-        void call(const std::any &args) override
+        bool is_expired() const override { return token.expired(); }
+
+        void exec(void *args_ptr, std::type_index type_idx) override
         {
-            if (args.type() == typeid(std::tuple<Args...>))
+            if (type_idx != typeid(std::tuple<std::decay_t<Args>...>))
             {
-                // 解包元组并调用回调
-                std::apply(callback, std::any_cast<const std::tuple<Args...> &>(args));
+                return;
             }
-            // 如果类型不匹配，静默忽略
-        }
-
-        std::type_index get_type_index() const override
-        {
-            return typeid(std::tuple<Args...>);
-        }
-
-        bool is_expired() const override
-        {
-            return wToken.expired();
+            auto *tuple_args = static_cast<std::tuple<std::decay_t<Args>...> *>(args_ptr);
+            std::apply(callback, *tuple_args);
         }
     };
 
-    struct Entry
-    {
-        std::unique_ptr<CallbackWrapperBase> wrapper;
-        std::type_index argType;
-    };
+    using HandlerList = std::vector<std::unique_ptr<HandlerBase>>;
+    std::unordered_map<T, HandlerList> subscribers_;
+    mutable std::shared_mutex mutex_;
 
-    std::unordered_map<T, std::vector<Entry>> subscribers;
-
-    // 清理过期订阅者的辅助函数
-    void cleanup_expired(T type)
-    {
-        auto it = subscribers.find(type);
-        if (it == subscribers.end())
-            return;
-
-        auto &list = it->second;
-        list.erase(std::remove_if(list.begin(), list.end(),
-                                  [](Entry &e)
-                                  { return e.wrapper->is_expired(); }),
-                   list.end());
-    }
-
-    // 私有构造函数（单例模式）
     EventBus() = default;
 
-    // 禁用拷贝和移动
-    EventBus(const EventBus &) = delete;
-    EventBus &operator=(const EventBus &) = delete;
-    EventBus(EventBus &&) = delete;
-    EventBus &operator=(EventBus &&) = delete;
-
 public:
-    // 单例访问接口
     static EventBus<T> &GetInstance()
     {
         static EventBus<T> instance;
         return instance;
     }
-    // 订阅事件，支持任意数量和类型的参数
-    template <typename... Args>
-    [[nodiscard]] std::shared_ptr<void> Subscribe(T type, std::function<void(Args...)> handler)
-    {
-        auto token = std::make_shared<char>(0);
-        auto wrapper = std::make_unique<CallbackWrapper<Args...>>(std::move(handler), token);
-        std::type_index argType = typeid(std::tuple<Args...>);
 
-        subscribers[type].push_back({std::move(wrapper), argType});
-        return token;
+    EventBus(const EventBus &) = delete;
+    EventBus &operator=(const EventBus &) = delete;
+
+    // 订阅：自动推导参数类型
+    template <typename F>
+    [[nodiscard]] std::shared_ptr<void> Subscribe(T type, F &&handler)
+    {
+        using Traits = function_traits<std::decay_t<F>>;
+        return SubscribeImpl(type, std::forward<F>(handler), typename Traits::args_tuple{});
     }
 
-    // 重载：支持无参数事件
+    // 订阅：无参特化
     [[nodiscard]] std::shared_ptr<void> Subscribe(T type, std::function<void()> handler)
     {
-        return this->template Subscribe<>(type, std::move(handler));
+        return SubscribeImpl(type, std::move(handler), std::tuple<>{});
     }
 
-    // // 重载：接受任意可调用对象（lambda、函数指针等）
-    // template <typename Callable>
-    // [[nodiscard]] std::shared_ptr<void> Subscribe(T type, Callable &&handler)
-    // {
-    //     // 使用 SFINAE 检测 Callable 的签名
-    //     using traits = detail::function_traits<std::decay_t<Callable>>;
-    //     return SubscribeImpl(type, std::forward<Callable>(handler), std::make_index_sequence<traits::arity>{});
-    // }
-
-    template <typename F>
-    auto Subscribe(T type, F &&handler)
-    {
-        // 利用辅助工具类提取 Lambda 的函数签名
-        using traits = function_traits<std::decay_t<F>>;
-        return Subscribe(type, static_cast<typename traits::std_function_type>(std::forward<F>(handler)));
-    }
-
-    // 发布事件，支持任意数量和类型的参数
+    // 发布
     template <typename... Args>
     void Publish(T type, Args &&...args)
     {
-        auto it = subscribers.find(type);
-        if (it == subscribers.end())
+        // 构建 Tuple (移除引用和const，确保持久化存储参数)
+        std::tuple<std::decay_t<Args>...> packaged_args(std::forward<Args>(args)...);
+
+        std::shared_lock<std::shared_mutex> lock(mutex_); // 读锁
+
+        auto it = subscribers_.find(type);
+        if (it == subscribers_.end())
             return;
 
-        auto &list = it->second;
-        std::type_index expectedType = typeid(std::tuple<Args...>);
-        bool hasDead = false;
+        bool need_cleanup = false;
+        std::type_index current_type_id = typeid(packaged_args);
 
-        // 首先执行所有有效的回调
-        for (auto &entry : list)
+        for (auto &handler : it->second)
         {
-            // 检查类型是否匹配
-            if (entry.argType != expectedType)
-                continue;
-
-            if (!entry.wrapper->is_expired())
+            if (!handler->is_expired())
             {
-                std::tuple<Args...> tupleArgs(std::forward<Args>(args)...);
-                entry.wrapper->call(tupleArgs);
+                handler->exec(&packaged_args, current_type_id);
             }
             else
             {
-                hasDead = true;
+                need_cleanup = true;
             }
         }
 
-        // 如果有过期令牌，立即清理
-        if (hasDead)
+        if (need_cleanup)
         {
-            cleanup_expired(type);
+            lock.unlock();                                          // 升级锁前必须先解锁
+            std::unique_lock<std::shared_mutex> write_lock(mutex_); // 写锁
+            auto &list = subscribers_[type];
+            // 修复: 包含了 <algorithm> 后这里才能编译通过
+            list.erase(std::remove_if(list.begin(), list.end(),
+                                      [](const auto &h)
+                                      { return h->is_expired(); }),
+                       list.end());
         }
     }
 
-    // 重载：发布无参数事件
-    void Publish(T type)
+private:
+    template <typename F, typename... Args>
+    std::shared_ptr<void> SubscribeImpl(T type, F &&handler, std::tuple<Args...>)
     {
-        this->template Publish<>(type);
-    }
+        std::unique_lock<std::shared_mutex> lock(mutex_);
 
-    // 手动清理所有过期订阅者
-    void Cleanup()
-    {
-        for (auto &pair : subscribers)
-        {
-            cleanup_expired(pair.first);
-        }
-    }
+        auto token = std::make_shared<int>(1);
+        auto wrapper = std::make_unique<Handler<Args...>>(
+            std::function<void(Args...)>(std::forward<F>(handler)),
+            token);
 
-    // 检查是否有订阅者
-    bool HasSubscribers(T type) const
-    {
-        auto it = subscribers.find(type);
-        return it != subscribers.end() && !it->second.empty();
-    }
-
-    // 获取特定类型的订阅者数量
-    size_t GetSubscriberCount(T type) const
-    {
-        auto it = subscribers.find(type);
-        return it == subscribers.end() ? 0 : it->second.size();
+        subscribers_[type].push_back(std::move(wrapper));
+        return token;
     }
 };
 
