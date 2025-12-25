@@ -25,7 +25,7 @@ bool Room::AddPlayer(uint64_t userId)
         return false;
     }
 
-    if (playerIds.size() >= 2)
+    if (playerIds.size() >= 10)
     {
         error = "Room is full";
         return false;
@@ -37,6 +37,9 @@ bool Room::AddPlayer(uint64_t userId)
     }
 
     playerIds.push_back(userId);
+
+    EventBus<Event>::GetInstance().Publish(Event::PlayerJoined, roomId, userId);
+    EventBus<Event>::GetInstance().Publish(Event::RoomListUpdated);
     return true;
 }
 
@@ -68,6 +71,12 @@ int Room::RemovePlayer(uint64_t userId)
     if (userId == whitePlayerId)
         whitePlayerId = 0;
 
+    // 发布玩家离开事件
+    EventBus<Event>::GetInstance().Publish(Event::PlayerLeft, roomId, userId);
+
+    // 发布房间列表更新事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomListUpdated);
+
     return 0;
 }
 
@@ -94,6 +103,12 @@ bool Room::EditRoomSetting(uint64_t userId, const MapType &settings)
             game = Game(boardSize);
         }
     }
+
+    // 发布房间状态变化事件（设置修改）
+    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "settings_updated");
+
+    // 发布房间列表更新事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomListUpdated);
 
     return true;
 }
@@ -126,6 +141,16 @@ bool Room::StartGame(uint64_t userId)
 
     status = RoomStatus::Playing;
     game.reset();
+
+    // 发布游戏开始事件
+    EventBus<Event>::GetInstance().Publish(Event::GameStarted, roomId);
+
+    // 发布房间状态变化事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "playing");
+
+    // 发布房间列表更新事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomListUpdated);
+
     return true;
 }
 
@@ -150,6 +175,10 @@ bool Room::TakeBlack(uint64_t userId)
     }
 
     blackPlayerId = userId;
+
+    // 发布房间状态变化事件（颜色选择）
+    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "black_selected");
+
     return true;
 }
 
@@ -174,6 +203,10 @@ bool Room::TakeWhite(uint64_t userId)
     }
 
     whitePlayerId = userId;
+
+    // 发布房间状态变化事件（颜色选择）
+    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "white_selected");
+
     return true;
 }
 
@@ -182,11 +215,15 @@ bool Room::CancelTake(uint64_t userId)
     if (userId == blackPlayerId)
     {
         blackPlayerId = 0;
+        // 发布房间状态变化事件（取消颜色选择）
+        EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "black_canceled");
         return true;
     }
     if (userId == whitePlayerId)
     {
         whitePlayerId = 0;
+        // 发布房间状态变化事件（取消颜色选择）
+        EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "white_canceled");
         return true;
     }
 
@@ -223,11 +260,30 @@ bool Room::TakeMove(uint64_t userId, uint32_t x, uint32_t y)
         return false;
     }
 
+    // 发布棋子放置事件
+    EventBus<Event>::GetInstance().Publish(Event::PiecePlaced, roomId, userId, x, y);
+
     Piece winner = game.checkWin(x, y);
     if (winner != Piece::EMPTY)
     {
         status = RoomStatus::End;
-        // TODO: 通过 EventBus 发送游戏结束事件
+
+        // 确定胜利者ID
+        uint64_t winnerId = 0;
+        if (winner == Piece::BLACK)
+        {
+            winnerId = blackPlayerId;
+        }
+        else if (winner == Piece::WHITE)
+        {
+            winnerId = whitePlayerId;
+        }
+
+        // 发布游戏结束事件
+        EventBus<Event>::GetInstance().Publish(Event::GameEnded, roomId, winnerId);
+
+        // 发布房间状态变化事件
+        EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, winnerId, "game_ended");
     }
 
     return true;
@@ -260,7 +316,13 @@ bool Room::Draw(uint64_t userId)
     }
 
     status = RoomStatus::End;
-    // TODO: 发送平局事件
+
+    // 发布平局请求事件
+    EventBus<Event>::GetInstance().Publish(Event::DrawRequested, roomId, userId);
+
+    // 发布房间状态变化事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "draw_requested");
+
     return true;
 }
 
@@ -279,7 +341,30 @@ bool Room::GiveUp(uint64_t userId)
     }
 
     status = RoomStatus::End;
-    // TODO: 发送认输事件，对方获胜
+
+    // 确定胜利者（对方）
+    uint64_t winnerId = 0;
+    if (userId == blackPlayerId)
+    {
+        winnerId = whitePlayerId;
+    }
+    else if (userId == whitePlayerId)
+    {
+        winnerId = blackPlayerId;
+    }
+
+    // 发布认输事件
+    EventBus<Event>::GetInstance().Publish(Event::GiveUpRequested, roomId, userId);
+
+    // 发布游戏结束事件（对方获胜）
+    if (winnerId != 0)
+    {
+        EventBus<Event>::GetInstance().Publish(Event::GameEnded, roomId, winnerId);
+    }
+
+    // 发布房间状态变化事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomStatusChanged, roomId, userId, "give_up");
+
     return true;
 }
 

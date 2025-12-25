@@ -7,57 +7,38 @@
 #include <functional>
 
 class ObjectManager;
+class Room;
+class User;
 
 class Handler
 {
 private:
     ObjectManager &objMgr;
-    EventBus<Event> &eventBus;
     std::function<void(const Packet &)> sendCallback;
 
-    // 用户相关处理
-    void OnLogin(const Packet &packet);
-    void OnSignIn(const Packet &packet);
-    void OnLoginByGuest(const Packet &packet);
-    void OnGuest2User(const Packet &packet);
-    void OnEditUsername(const Packet &packet);
-    void OnEditPassword(const Packet &packet);
-    void OnLogOut(const Packet &packet);
-
-    // 房间相关处理
-    void OnCreateRoom(const Packet &packet);
-    void OnCreateSingleRoom(const Packet &packet);
-    void OnJoinRoom(const Packet &packet);
-    void OnExitRoom(const Packet &packet);
-    void OnQuickMatch(const Packet &packet);
-
-    // 座位操作处理
-    void OnTakeBlack(const Packet &packet);
-    void OnTakeWhite(const Packet &packet);
-    void OnCancelTake(const Packet &packet);
-    void OnStartGame(const Packet &packet);
-    void OnEditRoomSetting(const Packet &packet);
-
-    // 游戏相关处理
-    void OnMakeMove(const Packet &packet);
-    void OnBackMove(const Packet &packet);
-    void OnDraw(const Packet &packet);
-    void OnGiveUp(const Packet &packet);
-
-    // 查询和订阅处理
-    void OnGetUser(const Packet &packet);
-    void OnSubscribeUserList(const Packet &packet);
-    void OnSubscribeRoomList(const Packet &packet);
+    // 分组处理方法 - 按MsgType分段
+    void HandleAuthPacket(const Packet &packet);         // 100-199: 账户操作
+    void HandleLobbyPacket(const Packet &packet);        // 200-299: 大厅操作
+    void HandleRoomPacket(const Packet &packet);         // 300-399: 房间操作
+    void HandleGamePacket(const Packet &packet);         // 400-499: 游戏操作
+    void HandleNotificationPacket(const Packet &packet); // 推送消息
 
     // 辅助函数（暂时保留，后续改为事件发布）
+    User *GetUserBySessionId(uint64_t sessionId);
+    uint64_t GetUserRoomId(User *user);
     void SendResponse(const Packet &request, MsgType responseType, const MapType &params = {});
     void SendError(const Packet &request, const std::string &errMsg);
 
+    // 房间状态发送辅助函数
+    void SendRoomStateToPlayer(uint64_t sessionId, Room *room);
+    void SendBoardState(uint64_t sessionId, Room *room);
+    void SendPlayerList(uint64_t sessionId, Room *room);
+    void SendColorAssignment(uint64_t sessionId, Room *room);
+
 public:
-    Handler(ObjectManager &objMgr, EventBus<Event> &eventBus, std::function<void(const Packet &)> sendCallback);
+    Handler(ObjectManager &objMgr, std::function<void(const Packet &)> sendCallback);
     ~Handler();
 
-    // 公开方法：Server 通过回调调用此方法处理包
     void HandlePacket(const Packet &packet);
 };
 

@@ -15,34 +15,28 @@
 
 int main()
 {
-    // 初始化Logger
     Logger::init("./gomoku.log", LogLevel::DEBUG, true);
-    LOG_INFO("Initializing Gomoku-backend...");
+    LOG_DEBUG("============= Initializing Gomoku-backend =============");
 
-    // 初始化数据库
     Database &db = Database::GetInstance();
     if (!db.Initialize("gomoku.db"))
     {
         LOG_ERROR("Failed to initialize database");
         return 1;
     }
-
-    EventBus<Event> eventBus;
-    ObjectManager objMgr(eventBus);
+    ObjectManager objMgr;
     Server server;
-    Handler msgHandler(objMgr, eventBus, [&server](const Packet &packet)
+    Handler msgHandler(objMgr, [&server](const Packet &packet)
                        { server.SendPacket(packet); });
-    Notifier broadcaster(eventBus, objMgr);
+    Notifier broadcaster(objMgr);
 
-    // 连接 Server 与 Handler
     server.SetOnPacketCallback([&msgHandler](const Packet &packet)
                                { msgHandler.HandlePacket(packet); });
-
-    // 连接 Server 与 Notifier
     broadcaster.SetSendPacketCallback([&server](const Packet &packet)
                                       { server.SendPacket(packet); });
 
-    LOG_INFO("Gomoku-backend initialized.");
+    LOG_DEBUG("=======================================================");
+
     if (server.Init() != 0)
     {
         LOG_ERROR("Failed to initialize server");

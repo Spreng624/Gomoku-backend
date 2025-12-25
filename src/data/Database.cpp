@@ -28,6 +28,7 @@ bool Database::Initialize(const std::string &dbPath)
         LOG_WARN("Database already initialized");
         return false;
     }
+    initialized = true;
 
     int rc = sqlite3_open(dbPath.c_str(), &db);
     if (rc != SQLITE_OK)
@@ -39,7 +40,6 @@ bool Database::Initialize(const std::string &dbPath)
     // 启用外键约束
     Execute("PRAGMA foreign_keys = ON");
 
-    initialized = true;
     LOG_INFO("Database initialized successfully: " + dbPath);
 
     // 创建表
@@ -226,7 +226,7 @@ bool Database::CreateTablesIfNotExist()
     std::string createGameRecordsTable = R"(
         CREATE TABLE IF NOT EXISTS game_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            room_id INTEGER NOT NULL,
+            roomId INTEGER NOT NULL,
             black_player_id INTEGER NOT NULL,
             white_player_id INTEGER NOT NULL,
             winner_id INTEGER,
@@ -234,7 +234,7 @@ bool Database::CreateTablesIfNotExist()
             moves_json TEXT,
             start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             end_time TIMESTAMP,
-            FOREIGN KEY(room_id) REFERENCES rooms(id),
+            FOREIGN KEY(roomId) REFERENCES rooms(id),
             FOREIGN KEY(black_player_id) REFERENCES users(id),
             FOREIGN KEY(white_player_id) REFERENCES users(id),
             FOREIGN KEY(winner_id) REFERENCES users(id)

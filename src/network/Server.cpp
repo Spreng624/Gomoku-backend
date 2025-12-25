@@ -260,8 +260,8 @@ int Server::Connect(SOCKET_TYPE sock)
     SetNonBlocking(sock);
     this->client_sockets.push_back(sock);
     this->max_fd = std::max(this->max_fd, sock);
-    LOG_INFO("New connection accepted (Sock: " + std::to_string(sock) + ")");
-    LOG_DEBUG("Total connected clients: " + std::to_string(client_sockets.size()));
+    LOG_TRACE("New connection accepted (Sock: " + std::to_string(sock) + ")");
+    LOG_TRACE("Total connected clients: " + std::to_string(client_sockets.size()));
     return 0;
 }
 

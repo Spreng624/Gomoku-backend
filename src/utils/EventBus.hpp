@@ -36,13 +36,19 @@ enum class Event
     // 游戏事件（用于服务器推送）
     PlayerJoined,      // 玩家加入房间
     PlayerLeft,        // 玩家离开房间
-    OpponentMoved,     // 对手落子
+    PiecePlaced,       // 棋子放置（不区分自己/对手）
+    GameStarted,       // 游戏开始
     GameEnded,         // 游戏结束
     RoomStatusChanged, // 房间状态变化
     DrawRequested,     // 平局请求
     DrawAccepted,      // 平局接受
     GiveUpRequested,   // 认输
-    RoomCreated        // 房间创建完成
+    RoomCreated,       // 房间创建完成
+    UserLoggedIn,      // 用户登录完成
+    RoomListUpdated,   // 房间列表已更新
+    ChatMessageRecv,   // 聊天消息接收
+    RoomSync,          // 房间同步
+    GameSync           // 游戏同步
 };
 
 template <typename T>
@@ -129,7 +135,22 @@ private:
                    list.end());
     }
 
+    // 私有构造函数（单例模式）
+    EventBus() = default;
+
+    // 禁用拷贝和移动
+    EventBus(const EventBus &) = delete;
+    EventBus &operator=(const EventBus &) = delete;
+    EventBus(EventBus &&) = delete;
+    EventBus &operator=(EventBus &&) = delete;
+
 public:
+    // 单例访问接口
+    static EventBus<T> &GetInstance()
+    {
+        static EventBus<T> instance;
+        return instance;
+    }
     // 订阅事件，支持任意数量和类型的参数
     template <typename... Args>
     [[nodiscard]] std::shared_ptr<void> Subscribe(T type, std::function<void(Args...)> handler)
@@ -145,7 +166,7 @@ public:
     // 重载：支持无参数事件
     [[nodiscard]] std::shared_ptr<void> Subscribe(T type, std::function<void()> handler)
     {
-        return Subscribe(type, std::function<void()>(std::move(handler)));
+        return this->template Subscribe<>(type, std::move(handler));
     }
 
     // // 重载：接受任意可调用对象（lambda、函数指针等）
@@ -205,7 +226,7 @@ public:
     // 重载：发布无参数事件
     void Publish(T type)
     {
-        Publish(type);
+        this->template Publish<>(type);
     }
 
     // 手动清理所有过期订阅者

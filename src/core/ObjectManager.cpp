@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <sstream>
 
-ObjectManager::ObjectManager(EventBus<Event> &eventBus) : eventBus(eventBus)
+ObjectManager::ObjectManager()
 {
     // 从数据库加载所有用户
     LoadUsersFromDatabase();
@@ -129,6 +129,10 @@ Room *ObjectManager::CreateRoom(uint64_t ownerId)
     auto room = std::make_unique<Room>(roomId);
     Room *ptr = room.get();
     rooms[roomId] = std::move(room);
+
+    // 发布房间创建事件
+    EventBus<Event>::GetInstance().Publish(Event::RoomCreated, roomId, ownerId);
+
     return ptr;
 }
 
@@ -145,72 +149,23 @@ bool ObjectManager::RemoveRoom(uint64_t roomId)
     auto it = rooms.find(roomId);
     if (it == rooms.end())
         return false;
+
+    // 清理该房间中所有用户的映射
+    Room *room = it->second.get();
+    if (room)
+    {
+        // 遍历房间中的所有玩家ID
+        for (uint64_t userId : room->playerIds)
+        {
+            userIdToRoomIdMap.erase(userId);
+        }
+    }
+
     rooms.erase(it);
     return true;
 }
 
-// --- Player 生命周期 API ---
-
-Player *ObjectManager::CreatePlayer(uint64_t sessionId, uint64_t userId)
-{
-    // 检查 sessionId 是否已有玩家
-    if (sessionIdToPlayerIdMap.find(sessionId) != sessionIdToPlayerIdMap.end())
-    {
-        return nullptr; // 该 session 已有玩家
-    }
-
-    uint64_t playerId = sessionId; // 简单起见，用 sessionId 作为 playerId
-    auto player = std::make_unique<Player>(eventBus);
-    Player *ptr = player.get();
-    players[playerId] = std::move(player);
-    sessionIdToPlayerIdMap[sessionId] = playerId;
-
-    // 如果指定了 userId，也建立映射
-    if (userId != 0)
-    {
-        sessionIdToUserIdMap[sessionId] = userId;
-    }
-
-    return ptr;
-}
-
-Player *ObjectManager::GetPlayer(uint64_t playerId)
-{
-    auto it = players.find(playerId);
-    if (it == players.end())
-        return nullptr;
-    return it->second.get();
-}
-
-Player *ObjectManager::GetPlayerBySessionId(uint64_t sessionId)
-{
-    auto it = sessionIdToPlayerIdMap.find(sessionId);
-    if (it == sessionIdToPlayerIdMap.end())
-        return nullptr;
-    return GetPlayer(it->second);
-}
-
-bool ObjectManager::RemovePlayer(uint64_t playerId)
-{
-    auto it = players.find(playerId);
-    if (it == players.end())
-        return false;
-
-    // 清理 sessionId 映射
-    for (auto &pair : sessionIdToPlayerIdMap)
-    {
-        if (pair.second == playerId)
-        {
-            sessionIdToPlayerIdMap.erase(pair.first);
-            break;
-        }
-    }
-
-    players.erase(it);
-    return true;
-}
-
-// --- Session 与 User/Player 的映射 ---
+// --- Session 与 User 的映射 ---
 
 void ObjectManager::MapSessionToUser(uint64_t sessionId, uint64_t userId)
 {
@@ -243,5 +198,62 @@ void ObjectManager::UnmapSession(uint64_t sessionId)
         userIdToSessionIdMap.erase(userId); // 清理反向映射
     }
     sessionIdToUserIdMap.erase(sessionId);
-    sessionIdToPlayerIdMap.erase(sessionId);
+}
+
+// --- User 与 Room 的映射 ---
+
+uint64_t ObjectManager::GetRoomIdByUserId(uint64_t userId)
+{
+    auto it = userIdToRoomIdMap.find(userId);
+    if (it == userIdToRoomIdMap.end())
+        return 0;
+    return it->second;
+}
+
+void ObjectManager::MapUserToRoom(uint64_t userId, uint64_t roomId)
+{
+    userIdToRoomIdMap[userId] = roomId;
+}
+
+void ObjectManager::UnmapUserFromRoom(uint64_t userId)
+{
+    userIdToRoomIdMap.erase(userId);
+}
+
+// --- 列表查询 API ---
+
+std::vector<User *> ObjectManager::GetUserList(size_t maxCount)
+{
+    std::vector<User *> result;
+    result.reserve(std::min(maxCount, users.size()));
+
+    size_t count = 0;
+    for (const auto &pair : users)
+    {
+        if (count >= maxCount)
+            break;
+
+        result.push_back(pair.second.get());
+        count++;
+    }
+
+    return result;
+}
+
+std::vector<Room *> ObjectManager::GetRoomList(size_t maxCount)
+{
+    std::vector<Room *> result;
+    result.reserve(std::min(maxCount, rooms.size()));
+
+    size_t count = 0;
+    for (const auto &pair : rooms)
+    {
+        if (count >= maxCount)
+            break;
+
+        result.push_back(pair.second.get());
+        count++;
+    }
+
+    return result;
 }

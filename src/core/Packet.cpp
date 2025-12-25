@@ -38,19 +38,6 @@ T ReadBytes(const std::vector<uint8_t> &buffer, size_t &offset)
 
 // [Map数据: [Map字段数量M 4 Byte] + M * [[键长度N 4 Byte][键字符串 N Byte][值类型索引 1 Byte][值数据 N Byte]]
 
-// bool Packet::CheckParam(std::initializer_list<std::string> keys) const
-// {
-//     for (auto key : keys)
-//     {
-//         if (!GetParam(key))
-//         {
-//             mgr.SendErrorMsg(sock, "Invalid Parameter");
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
 std::vector<uint8_t> Packet::Serialize() const
 {
     std::vector<uint8_t> buffer;

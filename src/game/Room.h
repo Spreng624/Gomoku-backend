@@ -3,6 +3,7 @@
 
 #include "Game.h"
 #include "Packet.h"
+#include "EventBus.hpp"
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -54,6 +55,8 @@ public:
     bool BackMove(uint64_t userId, uint32_t x, uint32_t y);
     bool Draw(uint64_t userId);
     bool GiveUp(uint64_t userId);
+
+    bool IsUserInRoom(uint64_t userId) const;
 
     std::string GetError() const;
 };

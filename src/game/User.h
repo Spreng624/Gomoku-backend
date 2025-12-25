@@ -7,6 +7,20 @@
 #include <ctime>
 #include <cstdint>
 
+enum UserStatus
+{
+    Free,
+    InRoom,
+    InGame
+};
+
+struct UserContext
+{
+    UserStatus status;
+    std::string session;
+    uint64_t roomId;
+};
+
 // 静态用户
 class User
 {
@@ -22,6 +36,8 @@ public:
     int win_count;  // 胜利次数
     int lose_count; // 失败次数
     int draw_count; // 和局次数
+
+    UserContext context; // 用户上下文
 
     int K(); // 计算K值
 
